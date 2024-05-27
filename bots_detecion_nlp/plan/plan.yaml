@@ -1,0 +1,74 @@
+aggregator:
+  settings:
+    best_state_path: save/keras_nlp_best.pbuf
+    db_store_rounds: 2
+    init_state_path: save/keras_nlp_init.pbuf
+    last_state_path: save/keras_nlp_last.pbuf
+    rounds_to_train: 10
+    write_logs: true
+  template: openfl.component.Aggregator
+assigner:
+  settings:
+    task_groups:
+    - name: train_and_validate
+      percentage: 1.0
+      tasks:
+      - aggregated_model_validation
+      - train
+      - locally_tuned_model_validation
+  template: openfl.component.RandomGroupedAssigner
+collaborator:
+  settings:
+    db_store_rounds: 1
+    delta_updates: false
+    epochs_per_round: 10
+    opt_treatment: RESET
+    polling_interval: 4
+  template: openfl.component.Collaborator
+compression_pipeline:
+  settings: {}
+  template: openfl.pipelines.NoCompressionPipeline
+data_loader:
+  settings:
+    batch_size: 64
+    collaborator_count: 2
+    num_samples: 10000
+    split_ratio: 0.2
+  template: src.dataloader.MLPDataLoader
+network:
+  settings:
+    agg_addr: 127.0.0.1
+    agg_port: 51182
+    cert_folder: cert
+    client_reconnect_interval: 5
+    disable_client_auth: false
+    hash_salt: auto
+    tls: true
+  template: openfl.federation.Network
+task_runner:
+  settings:
+    latent_dim: 256
+  template: src.taskrunner.KerasMLP
+tasks:
+  aggregated_model_validation:
+    function: validate
+    kwargs:
+      apply: global
+      batch_size: 32
+      metrics:
+      - accuracy
+  locally_tuned_model_validation:
+    function: validate
+    kwargs:
+      apply: local
+      batch_size: 32
+      metrics:
+      - accuracy
+  settings: {}
+  train:
+    function: train
+    kwargs:
+      batch_size: 32
+      epochs: 1
+      metrics:
+      - loss
